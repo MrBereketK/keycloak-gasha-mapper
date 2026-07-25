@@ -1,0 +1,9 @@
+com\gasha\mapper\collector\ContextCollector.class
+com\gasha\mapper\client\RiskEngineClient.class
+com\gasha\mapper\model\RiskModels$UserAttributes.class
+com\gasha\mapper\model\RiskModels.class
+com\gasha\mapper\model\RiskModels$EvaluationResponse.class
+com\gasha\mapper\model\RiskModels$ContextPayload.class
+com\gasha\mapper\model\RiskModels$EvaluationRequest.class
+com\gasha\mapper\modifier\TokenModifier.class
+com\gasha\mapper\AiRiskProtocolMapper.class
