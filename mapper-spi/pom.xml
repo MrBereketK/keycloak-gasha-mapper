@@ -12,7 +12,7 @@
     <properties>
         <maven.compiler.source>25</maven.compiler.source>
         <maven.compiler.target>25</maven.compiler.target>
-        <keycloak.version>24.0.0</keycloak.version>
+        <keycloak.version>26.7.0</keycloak.version>
         <apache.httpclient.version>4.5.14</apache.httpclient.version>
     </properties>
 
