@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # ----------------------------------------
+  # 1. Python Risk Engine Microservice
+  # ----------------------------------------
+  risk-engine:
+    build:
+      context: ./risk-engine
+      dockerfile: Dockerfile
+    container_name: gasha-risk-engine
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    networks:
+      - gasha-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ----------------------------------------
+  # 2. Keycloak IAM Server
+  # ----------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: gasha-keycloak
+    command: start-dev
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      # Tell Keycloak it's running behind a local proxy/docker so it doesn't force HTTPS everywhere during dev
+      - KC_PROXY=edge
+    ports:
+      - "8080:8080"
+    volumes:
+      # Inject our freshly compiled JAR file directly into Keycloak's plugin folder!
+      - ./mapper-spi/target/gasha-risk-mapper.jar:/opt/keycloak/providers/gasha-risk-mapper.jar
+    networks:
+      - gasha-net
+    depends_on:
+      - risk-engine
+
+networks:
+  gasha-net:
+    driver: bridge

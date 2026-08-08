@@ -70,3 +70,14 @@ class RiskEvaluatorService:
             reasons=reasons,
             evaluator_version="v1-rules"
         )
+
+    # def evaluate(request: EvaluationRequest) -> EvaluationResponse:
+    #     # ... (all your commented out logic) ...
+
+    #     # TEMPORARY TEST CODE: Force a HIGH risk response
+    #     return EvaluationResponse(
+    #         risk_level=RiskLevel.HIGH,
+    #         risk_score=1.0,
+    #         reasons=["Testing Keycloak role suppression"],
+    #         evaluator_version="test-override"
+    #     )

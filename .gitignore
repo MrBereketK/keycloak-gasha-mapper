@@ -1,0 +1,9 @@
+# Maven build output
+mapper-spi/target/
+
+# VS Code / Editor files
+*.code-workspace
+
+# Python cache (just in case)
+__pycache__/
+.venv/
