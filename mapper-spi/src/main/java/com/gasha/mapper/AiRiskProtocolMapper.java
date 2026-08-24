@@ -96,6 +96,13 @@ public class AiRiskProtocolMapper extends AbstractOIDCProtocolMapper implements 
         return PROVIDER_ID;
     }
 
+    @Override
+    public int getPriority() {
+        // Run at priority 1000 to guarantee the AI Risk Engine executes AFTER 
+        // default Keycloak role mappers, allowing it to successfully strip injected roles.
+        return 1000;
+    }
+
     /**
      * This is the core Keycloak hook. It runs right before the token is signed and issued.
      */

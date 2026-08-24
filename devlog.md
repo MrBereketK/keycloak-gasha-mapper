@@ -110,3 +110,32 @@ Address the advisor's security concern: Ensure that suppressed roles are not lea
 ### ⏭️ Next Steps
 * Scaffold the Next.js frontend to visually demonstrate the dynamic token modification and conditional UI rendering based on the active risk level.
 * Add persistent database volumes to `docker-compose.yml`.
+
+## Chapter 6: Execution Priority, Scope Configuration & Final Verification (August 2026)
+
+### 🎯 Objective
+Finalize the end-to-end integration, resolve scope and priority bugs in Keycloak, and definitively prove that the dynamic role suppression works accurately in both LOW and HIGH risk states.
+
+### 👣 Steps Taken
+1. Rebuilt the Python Risk Engine container using `docker compose up -d --build --no-deps risk-engine` to safely update Python logic without destroying the Keycloak database state.
+2. Configured the Keycloak UI to properly inject roles by toggling "Full scope allowed" to ON within the `admin-cli-dedicated` client scope.
+3. Modified `AiRiskProtocolMapper.java` to override the `getPriority()` method, returning `1000`. This forces the custom AI mapper to execute *after* Keycloak's default role mappers.
+4. Recompiled the Java plugin using Maven (`mvn clean package`) and restarted the Keycloak container (`docker compose restart keycloak`) to load the updated JAR.
+5. Evaluated tokens via the Keycloak Admin Console UI to verify final states:
+   * **LOW Risk:** Token successfully retains the `"admin"` role in the `realm_access` array.
+   * **HIGH Risk:** Token successfully drops the `"admin"` role and sets `"restricted": true`.
+
+### 🐛 Errors & Solutions
+* **Error:** Docker build stalled for an extended time while downloading the `uvloop` dependency during `pip install`.
+* **Cause:** Severe network latency connecting to the PyPI registry.
+* **Solution/Fix:** Allowed the download to finish without interruption and utilized `docker compose stop` to safely pause the environment between sessions without losing the non-persistent Keycloak UI configurations.
+* **Error:** The `admin` role was completely missing from the token even when the risk was LOW and the mapper set `restricted: false`.
+* **Cause:** The `roles` client scope was restricted from passing through the `admin-cli` client.
+* **Solution/Fix:** Navigated to Client Scopes -> `admin-cli-dedicated` -> Scope tab, and turned on the "Full scope allowed" toggle.
+* **Error:** The `admin` role was still present in the token when the risk was explicitly HIGH.
+* **Cause:** An execution order (priority) conflict. Keycloak's default role mapper ran *after* the custom SPI, overwriting the AI engine's decision and re-injecting the role.
+* **Solution/Fix:** Overrode the `getPriority()` method in the Java SPI to return `1000`, guaranteeing the custom mapper has the final authority to strip the roles just before the token is signed.
+
+### 📌 Architecture & Decision Notes
+* **Decision:** Explicitly classified the V1 backend as a "Rule-Based Risk Engine" (Heuristic Risk Assessor) rather than a true Machine Learning model.
+* **Reasoning:** The current logic is strictly deterministic (hardcoded `if/then` conditions). This establishes a predictable, reliable baseline for V1. Because of the decoupled architecture, swapping this out for a trained classification model (e.g., an Isolation Forest via `scikit-learn`) in V2 will require zero modifications to the Java SPI or Docker network.
