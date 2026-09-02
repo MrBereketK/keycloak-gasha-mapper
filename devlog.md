@@ -107,9 +107,7 @@ Address the advisor's security concern: Ensure that suppressed roles are not lea
 ### 📌 Architecture & Decision Notes
 * Successfully verified that Keycloak's dynamic mapper architecture correctly intercepts endpoint requests, confirming the security flaw is patched.
 
-### ⏭️ Next Steps
-* Scaffold the Next.js frontend to visually demonstrate the dynamic token modification and conditional UI rendering based on the active risk level.
-* Add persistent database volumes to `docker-compose.yml`.
+---
 
 ## Chapter 6: Execution Priority, Scope Configuration & Final Verification (August 2026)
 
@@ -139,3 +137,54 @@ Finalize the end-to-end integration, resolve scope and priority bugs in Keycloak
 ### 📌 Architecture & Decision Notes
 * **Decision:** Explicitly classified the V1 backend as a "Rule-Based Risk Engine" (Heuristic Risk Assessor) rather than a true Machine Learning model.
 * **Reasoning:** The current logic is strictly deterministic (hardcoded `if/then` conditions). This establishes a predictable, reliable baseline for V1. Because of the decoupled architecture, swapping this out for a trained classification model (e.g., an Isolation Forest via `scikit-learn`) in V2 will require zero modifications to the Java SPI or Docker network.
+
+---
+
+## Chapter 7: V2 Machine Learning Integration & Anomaly Detection (August 2026)
+
+### 🎯 Objective
+Upgrade the backend Risk Engine from a V1 deterministic rule-based system to a V2 Machine Learning model capable of unsupervised anomaly detection.
+
+### 👣 Steps Taken
+1. Wrote `train_mock_model.py` to generate 2,000 samples of realistic synthetic login data. 
+2. Trained an `IsolationForest` model via `scikit-learn` and serialized it to `risk_model_v2.pkl`.
+3. Upgraded `features.py` to act as a data pipeline, converting Keycloak JSON requests into a 5-dimensional numerical NumPy array.
+4. Replaced the `if/then` evaluation logic in `evaluator.py` with the ML model's `predict()` method. 
+5. Updated `requirements.txt` and successfully rebuilt the Docker container with the new data science dependencies.
+6. Conducted end-to-end verification of the ML engine:
+   * **LOW Risk Verified:** Generated a token via the Keycloak UI Simulator (Standard Browser). The ML model recognized the behavior as normal, outputted `v2-ml-isolation-forest`, and successfully retained the `admin` role.
+   * **HIGH Risk Verified:** Simulated a cyberattack using Postman and a spoofed `sqlmap/1.5.8#dev` User-Agent via browser DevTools. The ML model detected the anomaly, flagged it as HIGH risk, and successfully stripped the `admin` role from the token payload in real-time.
+
+### 🐛 Errors & Solutions
+* **Error:** `ValueError: Probabilities do not sum to 1` during ML model training.
+* **Cause:** The hardcoded probability array used in `numpy.random.choice` to generate synthetic login hours totaled `1.075` instead of exactly `1.0`.
+* **Solution/Fix:** Implemented a dynamic mathematical normalization step (`normalized_p = hour_weights / hour_weights.sum()`) to ensure the array sum is mathematically perfect before generating the distribution.
+
+### 📌 Architecture & Decision Notes
+* **Decision:** Utilized cyclic encoding (`np.sin` and `np.cos`) for time-based feature extraction.
+* **Reasoning:** Standard ML models interpret raw hours (0-23) linearly, failing to recognize that 23:00 and 01:00 are chronologically adjacent. Cyclic encoding resolves this, preventing false anomalies at midnight.
+* **Decision:** Selected Isolation Forest for the V2 ML architecture.
+* **Reasoning:** Anomaly detection in cybersecurity is heavily imbalanced (most logins are normal, few are malicious). Isolation Forest excels at identifying outliers in primarily "normal" datasets without needing extensive labels for every possible attack vector.
+
+## Chapter 8: Final Integration, UI Overhaul, & Live Presentation Defenses (September 2026)
+
+### 🎯 Objective
+Integrate the AI-secured Keycloak instance with a modern React/Tailwind frontend, enforce Zero-Trust middleware on the Express backend, and resolve live configuration drifts during the final presentation defense.
+
+### 👣 Steps Taken
+1. Developed the **Campus Gate Pass Portal**, a React/Vite Single Page Application using Tailwind CSS to visualize token risk levels and execute API requests.
+2. Implemented Zero-Trust Express.js middleware on port 3000 to intercept incoming JWTs, decode the payload, and return a `403 Forbidden` if the `security_admin` role was missing.
+3. Connected the React UI to Keycloak to force fresh authentication handshakes, allowing the Java SPI to evaluate spoofed `sqlmap` User-Agents in real-time.
+4. Finalized the dynamic role suppression by configuring the `claimsToRemoveStr` parameter in the Keycloak Admin Console to target the custom `security_admin` role.
+
+### 🐛 Errors & Solutions
+* **Error:** Express backend failed to start with `EACCES: permission denied 0.0.0.0:3000`.
+* **Cause:** Windows NAT (WinNAT) dynamically reserved and locked port 3000.
+* **Solution/Fix:** Restarted the Windows NAT service via PowerShell (`net stop winnat` followed by `net start winnat`) to release the port block.
+* **Error:** The `security_admin` role was not stripped during the live threat simulation, even though the ML engine correctly flagged the risk as HIGH (returning a `200 OK`).
+* **Cause:** Configuration drift. The Keycloak Mapper UI field for "Roles/Scopes to Suppress" was left at its default value (`admin,realm-admin`), causing the dynamic Java code to ignore the `security_admin` role.
+* **Solution/Fix:** Updated the custom configuration field in the `gasha-ai-evaluator` mapper settings to explicitly target `security_admin`, immediately resolving the issue without requiring Java code recompilation.
+
+### 📌 Architecture & Decision Notes
+* **Decision:** Designed a "Fail-Secure" fallback logic for the SPI's 500ms timeout threshold.
+* **Reasoning:** In a production environment, if the Python AI Engine crashes or experiences a Denial-of-Service (DoS) attack, the system must degrade gracefully (Fail-Closed) by stripping administrative privileges rather than Failing-Open and granting unchecked access to potential threats.
