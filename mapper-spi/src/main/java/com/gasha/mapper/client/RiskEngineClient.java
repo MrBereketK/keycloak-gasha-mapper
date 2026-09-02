@@ -45,26 +45,12 @@ public class RiskEngineClient {
                     return mapper.readValue(response.getEntity().getContent(), EvaluationResponse.class);
                 } else {
                     logger.warnf("Risk Engine returned non-200 status: %d", statusCode);
+                    return FallbackHandler.getFailClosedResponse("HTTP Status " + statusCode);
                 }
             }
         } catch (IOException e) {
             logger.errorf("Failed to communicate with Risk Engine (Timeout/Network Error): %s", e.getMessage());
+            return FallbackHandler.getFailClosedResponse("Network Error / Timeout: " + e.getMessage());
         }
-
-        // If we reach here, the network call failed. Apply Deterministic Fallback behavior.
-        return getFallbackResponse();
-    }
-
-    /**
-     * Fallback strategy: If the AI Risk Engine is offline, we default to HIGH risk 
-     * (Fail-Closed) to ensure security is maintained.
-     */
-    private EvaluationResponse getFallbackResponse() {
-        logger.warn("Applying fallback risk assessment: HIGH risk / Fail-Closed posture.");
-        EvaluationResponse fallback = new EvaluationResponse();
-        fallback.riskLevel = "HIGH";
-        fallback.riskScore = 1.0;
-        fallback.evaluatorVersion = "fallback-v1";
-        return fallback;
     }
 }

@@ -188,3 +188,17 @@ Integrate the AI-secured Keycloak instance with a modern React/Tailwind frontend
 ### 📌 Architecture & Decision Notes
 * **Decision:** Designed a "Fail-Secure" fallback logic for the SPI's 500ms timeout threshold.
 * **Reasoning:** In a production environment, if the Python AI Engine crashes or experiences a Denial-of-Service (DoS) attack, the system must degrade gracefully (Fail-Closed) by stripping administrative privileges rather than Failing-Open and granting unchecked access to potential threats.
+
+## Chapter 9: Post-Defense Production Hardening (September 2026)
+
+### 🎯 Objective
+Transition the Zero-Trust architecture from a prototype "fail-open" state to a production-ready "fail-closed" state by implementing concrete fallback error handling in the Java SPI.
+
+### 👣 Steps Taken
+1. Populated `FallbackHandler.java` with a `getFailClosedResponse()` method designed to automatically return a `HIGH` risk state and a custom evaluator version (`fallback-fail-closed-v1`).
+2. Refactored `RiskEngineClient.java` to catch `IOException` (network timeouts) and non-200 HTTP status codes, routing these connection failures directly to the new `FallbackHandler`.
+3. Recompiled the Keycloak SPI using `mvn clean package` and safely restarted the Keycloak Docker container (`docker restart gasha-keycloak`) to deploy the updated JAR without destroying the persistent PostgreSQL database state.
+
+### 📌 Architecture & Decision Notes
+* **Decision:** Fully implemented the "Fail-Secure" fallback logic to enforce strict Zero-Trust principles.
+* **Reasoning:** In a live enterprise environment, if the Python AI Engine crashes, hangs, or experiences a Denial-of-Service (DoS) attack, the authentication flow must degrade gracefully. By intercepting connection errors and forcing a fail-closed state, the system aggressively strips administrative privileges (`security_admin`) instead of granting uninspected access to potential threats.
